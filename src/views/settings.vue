@@ -1,7 +1,7 @@
 <template>
   <div class="settings">
     <div class="container">
-      <div class="user" v-if="data.user.nickname !== undefined">
+      <div class="user" v-if="showUserInfo">
         <div class="left">
           <img class="avatar" :src="data.user.avatarUrl" />
           <div class="info">
@@ -33,6 +33,7 @@
         <div class="right">
           <select v-model="lang">
             <option value="en">🇬🇧 English</option>
+            <option value="tr">🇹🇷 Türkçe</option>
             <option value="zh-CN">🇨🇳 简体中文</option>
           </select>
         </div>
@@ -74,7 +75,7 @@
           </select>
         </div>
       </div>
-      <div class="item">
+      <div class="item" v-if="isElectron">
         <div class="left">
           <div class="title"> {{ $t("settings.deviceSelector") }} </div>
         </div>
@@ -91,7 +92,7 @@
           </select>
         </div>
       </div>
-      <div class="item">
+      <div class="item" v-if="isElectron">
         <div class="left">
           <div class="title">
             {{ $t("settings.automaticallyCacheSongs") }}
@@ -109,7 +110,23 @@
           </div>
         </div>
       </div>
-      <div class="item">
+      <div class="item" v-if="isElectron">
+        <div class="left">
+          <div class="title"> {{ $t("settings.cacheLimit.text") }} </div>
+        </div>
+        <div class="right">
+          <select v-model="cacheLimit">
+            <option :value="false">
+              {{ $t("settings.cacheLimit.none") }}
+            </option>
+            <option :value="512"> 500MB </option>
+            <option :value="1024"> 1GB </option>
+            <option :value="2048"> 2GB </option>
+            <option :value="4096"> 4GB </option>
+          </select>
+        </div>
+      </div>
+      <div class="item" v-if="isElectron">
         <div class="left">
           <div class="title">
             {{
@@ -121,7 +138,7 @@
           >
         </div>
         <div class="right">
-          <button @click="clearCache('tracks')">
+          <button @click="clearCache()">
             {{ $t("settings.clearSongsCache") }}
           </button>
         </div>
@@ -197,6 +214,42 @@
           </div>
         </div>
       </div>
+
+      <div class="item">
+        <div class="left">
+          <div class="title">
+            {{
+              isLastfmConnected
+                ? `已连接到 Last.fm (${lastfm.name})`
+                : "连接 Last.fm "
+            }}</div
+          >
+        </div>
+        <div class="right">
+          <button @click="lastfmDisconnect()" v-if="isLastfmConnected"
+            >断开连接
+          </button>
+          <button @click="lastfmConnect()" v-else> 授权连接 </button>
+        </div>
+      </div>
+
+      <div class="item">
+        <div class="left">
+          <div class="title"> {{ $t("settings.showLibraryDefault") }}</div>
+        </div>
+        <div class="right">
+          <div class="toggle">
+            <input
+              type="checkbox"
+              name="show-library-default"
+              id="show-library-default"
+              v-model="showLibraryDefault"
+            />
+            <label for="show-library-default"></label>
+          </div>
+        </div>
+      </div>
+
       <div class="item">
         <div class="left">
           <div class="title">
@@ -251,6 +304,22 @@
           </div>
         </div>
       </div>
+      <div class="item" v-if="isElectron">
+        <div class="left">
+          <div class="title"> {{ $t("settings.enableGlobalShortcut") }}</div>
+        </div>
+        <div class="right">
+          <div class="toggle">
+            <input
+              type="checkbox"
+              name="enable-enable-global-shortcut"
+              id="enable-enable-global-shortcut"
+              v-model="enableGlobalShortcut"
+            />
+            <label for="enable-enable-global-shortcut"></label>
+          </div>
+        </div>
+      </div>
       <div class="item">
         <div class="left">
           <div class="title" style="transform: scaleX(-1)">🐈️ 🏳️‍🌈</div>
@@ -281,7 +350,8 @@
 
 <script>
 import { mapState } from "vuex";
-import { doLogout } from "@/utils/auth";
+import { isLooseLoggedIn, doLogout } from "@/utils/auth";
+import { auth as lastfmAuth } from "@/api/lastfm";
 import { changeAppearance, bytesToSize } from "@/utils/common";
 import { countDBSize, clearDB } from "@/utils/db";
 import pkg from "../../package.json";
@@ -304,7 +374,7 @@ export default {
     };
   },
   computed: {
-    ...mapState(["player", "settings", "data"]),
+    ...mapState(["player", "settings", "data", "lastfm"]),
     isElectron() {
       return process.env.IS_ELECTRON;
     },
@@ -314,6 +384,10 @@ export default {
     version() {
       return pkg.version;
     },
+    showUserInfo() {
+      return isLooseLoggedIn() && this.data.user.nickname;
+    },
+
     lang: {
       get() {
         return this.settings.lang;
@@ -344,7 +418,7 @@ export default {
       set(value) {
         if (value === this.settings.musicQuality) return;
         this.$store.commit("changeMusicQuality", value);
-        this.clearCache("tracks");
+        this.clearCache();
       },
     },
     lyricFontSize: {
@@ -422,7 +496,7 @@ export default {
           value,
         });
         if (value === false) {
-          this.clearCache("tracks");
+          this.clearCache();
         }
       },
     },
@@ -470,6 +544,42 @@ export default {
         });
       },
     },
+    enableGlobalShortcut: {
+      get() {
+        return this.settings.enableGlobalShortcut;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "enableGlobalShortcut",
+          value,
+        });
+      },
+    },
+    showLibraryDefault: {
+      get() {
+        return this.settings.showLibraryDefault || false;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "showLibraryDefault",
+          value,
+        });
+      },
+    },
+    cacheLimit: {
+      get() {
+        return this.settings.cacheLimit || false;
+      },
+      set(value) {
+        this.$store.commit("updateSettings", {
+          key: "cacheLimit",
+          value,
+        });
+      },
+    },
+    isLastfmConnected() {
+      return this.lastfm.key !== undefined;
+    },
   },
   methods: {
     getAllOutputDevices() {
@@ -496,8 +606,8 @@ export default {
       doLogout();
       this.$router.push({ name: "home" });
     },
-    countDBSize(dbName) {
-      countDBSize(dbName).then((data) => {
+    countDBSize() {
+      countDBSize().then((data) => {
         if (data === undefined) {
           this.tracksCache = {
             size: "0KB",
@@ -509,11 +619,24 @@ export default {
         this.tracksCache.length = data.length;
       });
     },
-    clearCache(dbName) {
-      // TODO: toast
-      clearDB(dbName).then(() => {
-        this.countDBSize("tracks");
+    clearCache() {
+      clearDB().then(() => {
+        this.countDBSize();
       });
+    },
+    lastfmConnect() {
+      lastfmAuth();
+      let lastfmChecker = setInterval(() => {
+        const session = localStorage.getItem("lastfm");
+        if (session) {
+          this.$store.commit("updateLastfm", JSON.parse(session));
+          clearInterval(lastfmChecker);
+        }
+      }, 1000);
+    },
+    lastfmDisconnect() {
+      localStorage.removeItem("lastfm");
+      this.$store.commit("updateLastfm", {});
     },
   },
   created() {

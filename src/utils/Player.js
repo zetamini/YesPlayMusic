@@ -1,14 +1,14 @@
 import { getTrackDetail, scrobble, getMP3 } from "@/api/track";
-import { shuffle } from "lodash";
+import shuffle from "lodash/shuffle";
 import { Howler, Howl } from "howler";
-import localforage from "localforage";
-import { cacheTrack } from "@/utils/db";
+import { cacheTrackSource, getTrackSource } from "@/utils/db";
 import { getAlbum } from "@/api/album";
 import { getPlaylistDetail } from "@/api/playlist";
 import { getArtist } from "@/api/artist";
 import { personalFM, fmTrash } from "@/api/others";
 import store from "@/store";
 import { isAccountLoggedIn } from "@/utils/auth";
+import { trackUpdateNowPlaying, trackScrobble } from "@/api/lastfm";
 
 const electron =
   process.env.IS_ELECTRON === true ? window.require("electron") : null;
@@ -160,16 +160,31 @@ export default class {
     this._shuffledList = shuffle(list);
     if (firstTrackID !== "first") this._shuffledList.unshift(firstTrackID);
   }
-  async _scrobble(complete = false) {
-    let time = this._howler.seek();
-    if (complete) {
-      time = ~~(this._currentTrack.dt / 100);
-    }
+  async _scrobble(track, time, completed = false) {
+    console.debug(
+      `[debug][Player.js] scrobble track 👉 ${track.name} by ${track.ar[0].name} 👉 time:${time} completed: ${completed}`
+    );
+    const trackDuration = ~~(track.dt / 1000);
+    time = completed ? trackDuration : ~~time;
     scrobble({
-      id: this._currentTrack.id,
+      id: track.id,
       sourceid: this.playlistSource.id,
       time,
     });
+    if (
+      store.state.lastfm.key !== undefined &&
+      (time >= trackDuration / 2 || time >= 240)
+    ) {
+      const timestamp = ~~(new Date().getTime() / 1000) - time;
+      trackScrobble({
+        artist: track.ar[0].name,
+        track: track.name,
+        timestamp,
+        album: track.al.name,
+        trackNumber: track.no,
+        duration: trackDuration,
+      });
+    }
   }
   _playAudioSource(source, autoplay = true) {
     Howler.unload();
@@ -188,10 +203,9 @@ export default class {
     });
   }
   _getAudioSourceFromCache(id) {
-    let tracks = localforage.createInstance({ name: "tracks" });
-    return tracks.getItem(id).then((t) => {
-      if (t === null) return null;
-      const source = URL.createObjectURL(new Blob([t.mp3]));
+    return getTrackSource(id).then((t) => {
+      if (!t) return null;
+      const source = URL.createObjectURL(new Blob([t.source]));
       return source;
     });
   }
@@ -203,7 +217,7 @@ export default class {
         if (result.data[0].freeTrialInfo !== null) return null; // 跳过只能试听的歌曲
         const source = result.data[0].url.replace(/^http:/, "https:");
         if (store.state.settings.automaticallyCacheSongs) {
-          cacheTrack(track.id, source);
+          cacheTrackSource(track, source, result.data[0].br);
         }
         return source;
       });
@@ -217,7 +231,8 @@ export default class {
     if (process.env.IS_ELECTRON !== true) return null;
     const source = ipcRenderer.sendSync("unblock-music", track);
     if (store.state.settings.automaticallyCacheSongs && source?.url) {
-      cacheTrack(track.id, source.url);
+      // TODO: 将unblockMusic字样换成真正的来源（比如酷我咪咕等）
+      cacheTrackSource(track, source.url, 128000, "unblockMusic");
     }
     return source?.url;
   }
@@ -235,6 +250,9 @@ export default class {
     autoplay = true,
     ifUnplayableThen = "playNextTrack"
   ) {
+    if (autoplay && this._currentTrack.name) {
+      this._scrobble(this.currentTrack, this._howler?.seek());
+    }
     return getTrackDetail(id).then((data) => {
       let track = data.songs[0];
       this._currentTrack = track;
@@ -242,6 +260,7 @@ export default class {
       return this._getAudioSource(track).then((source) => {
         if (source) {
           this._playAudioSource(source, autoplay);
+          this._cacheNextTrack();
           return source;
         } else {
           store.dispatch("showToast", `无法播放 ${track.name}`);
@@ -250,6 +269,16 @@ export default class {
             : this.playPrevTrack();
         }
       });
+    });
+  }
+  _cacheNextTrack() {
+    let nextTrackID = this._isPersonalFM
+      ? this._personalFMNextTrack.id
+      : this._getNextTrack()[0];
+    if (!nextTrackID) return;
+    getTrackDetail(nextTrackID).then((data) => {
+      let track = data.songs[0];
+      this._getAudioSource(track);
     });
   }
   _loadSelfFromLocalStorage() {
@@ -321,7 +350,7 @@ export default class {
     }
   }
   _nextTrackCallback() {
-    this._scrobble(true);
+    this._scrobble(this._currentTrack, 0, true);
     if (this.repeatMode === "one") {
       this._replaceCurrentTrack(this._currentTrack.id);
     } else {
@@ -410,6 +439,15 @@ export default class {
     this._playing = true;
     document.title = `${this._currentTrack.name} · ${this._currentTrack.ar[0].name} - YesPlayMusic`;
     this._playDiscordPresence(this._currentTrack, this.seek());
+    if (store.state.lastfm.key !== undefined) {
+      trackUpdateNowPlaying({
+        artist: this.currentTrack.ar[0].name,
+        track: this.currentTrack.name,
+        album: this.currentTrack.al.name,
+        trackNumber: this.currentTrack.no,
+        duration: ~~(this.currentTrack.dt / 1000),
+      });
+    }
   }
   playOrPause() {
     if (this._howler.playing()) {
@@ -470,6 +508,9 @@ export default class {
     });
   }
   playPlaylistByID(id, trackID = "first", noCache = false) {
+    console.debug(
+      `[debug][Player.js] playPlaylistByID 👉 id:${id} trackID:${trackID} noCache:${noCache}`
+    );
     getPlaylistDetail(id, noCache).then((data) => {
       let trackIDs = data.playlist.trackIds.map((t) => t.id);
       this.replacePlaylist(trackIDs, id, "playlist", trackID);
@@ -480,6 +521,12 @@ export default class {
       let trackIDs = data.hotSongs.map((t) => t.id);
       this.replacePlaylist(trackIDs, id, "artist", trackID);
     });
+  }
+  playTrackOnListByID(id, listName = "default") {
+    if (listName === "default") {
+      this._current = this._list.findIndex((t) => t === id);
+    }
+    this._replaceCurrentTrack(id);
   }
   addTrackToPlayNext(trackID, playNow = false) {
     this._playNextList.push(trackID);

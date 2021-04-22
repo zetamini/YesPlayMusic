@@ -115,7 +115,7 @@ module.exports = {
             },
             {
               target: "deb",
-              arch: ["x64"],
+              arch: ["x64", "armv7l"],
             },
             {
               target: "rpm",
@@ -137,9 +137,9 @@ module.exports = {
           icon: "build/icons/icon.icns",
         },
         nsis: {
-          oneClick: false,
-          allowToChangeInstallationDirectory: true,
+          oneClick: true,
           perMachine: true,
+          deleteAppDataOnUninstall: true,
         },
       },
       // 主线程的配置文件

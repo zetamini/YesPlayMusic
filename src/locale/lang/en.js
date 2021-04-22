@@ -124,6 +124,10 @@ export default {
       high: "High",
       lossless: "Lossless",
     },
+    cacheLimit: {
+      text: "Songs Cache limit",
+      none: "None",
+    },
     lyricFontSize: {
       text: "Lyric Font Size",
       small: "Small",
@@ -149,6 +153,8 @@ export default {
     showUnavailableSongInGreyStyle: "Show unavailable song in grey style",
     showPlaylistsByAppleMusic: "Show playlists by Apple Music",
     enableDiscordRichPresence: "Enable Discord Rich Presence",
+    enableGlobalShortcut: "Enable Global Shortcut",
+    showLibraryDefault: "Show library default",
   },
   contextMenu: {
     play: "Play",

@@ -4,20 +4,20 @@ import pkg from "../../package.json";
 const updateSetting = () => {
   const parsedSettings = JSON.parse(localStorage.getItem("settings"));
   const {
-    playlistCategories,
     showUnavailableSongInGreyStyle,
     automaticallyCacheSongs,
     nyancatStyle,
     showLyricsTranslation,
     minimizeToTray,
+    enabledPlaylistCategories,
   } = initLocalStorage.settings;
   const settings = {
-    playlistCategories,
     showUnavailableSongInGreyStyle,
     automaticallyCacheSongs,
     nyancatStyle,
     showLyricsTranslation,
     minimizeToTray,
+    enabledPlaylistCategories,
     ...parsedSettings,
   };
 
@@ -54,9 +54,15 @@ const updatePlayer = () => {
   localStorage.setItem("player", JSON.stringify(data));
 };
 
+const removeOldStuff = () => {
+  // remove old indexedDB databases created by localforage
+  indexedDB.deleteDatabase("tracks");
+};
+
 export default function () {
   updateSetting();
   updateData();
   updatePlayer();
+  removeOldStuff();
   localStorage.setItem("appVersion", JSON.stringify(pkg.version));
 }

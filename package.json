@@ -1,6 +1,6 @@
 {
   "name": "yesplaymusic",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "private": true,
   "description": "A third party music player for Netease Music",
   "author": "hawtim<hawtimzhang@gmail.com>",
@@ -28,11 +28,11 @@
   "dependencies": {
     "@njzy/unblockneteasemusic": "^0.25.3",
     "axios": "^0.21.0",
-    "big-integer": "^1.6.48",
     "change-case": "^4.1.2",
     "core-js": "^3.6.5",
     "crypto-js": "^4.0.0",
     "dayjs": "^1.8.36",
+    "dexie": "^3.0.3",
     "discord-rich-presence": "^0.0.8",
     "electron": "^12.0.0",
     "electron-builder": "^22.10.5",
@@ -48,9 +48,8 @@
     "express-fileupload": "^1.2.0",
     "express-http-proxy": "^1.6.2",
     "extract-zip": "^2.0.1",
-    "howler": "^2.2.0",
+    "howler": "^2.2.1",
     "js-cookie": "^2.2.1",
-    "localforage": "^1.9.0",
     "lodash": "^4.17.20",
     "nprogress": "^0.2.0",
     "pac-proxy-agent": "^4.1.0",
@@ -68,9 +67,6 @@
     "vuex": "^3.4.0"
   },
   "devDependencies": {
-    "@sentry/browser": "^5.27.0",
-    "@sentry/integrations": "^5.27.0",
-    "@sentry/tracing": "^5.27.0",
     "@vue/cli-plugin-babel": "~4.5.0",
     "@vue/cli-plugin-eslint": "~4.5.0",
     "@vue/cli-plugin-pwa": "~4.5.0",
@@ -80,7 +76,7 @@
     "eslint": "^6.7.2",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-prettier": "^3.3.1",
-    "eslint-plugin-vue": "^6.2.2",
+    "eslint-plugin-vue": "^7.9.0",
     "husky": "^4.3.0",
     "sass": "^1.26.11",
     "sass-loader": "^10.0.2",
@@ -95,6 +91,7 @@
     },
     "extends": [
       "plugin:vue/essential",
+      "plugin:vue/recommended",
       "eslint:recommended",
       "plugin:prettier/recommended"
     ],

@@ -1,9 +1,6 @@
 <template>
-  <div
-    class="daily-recommend-card"
-    @click="goToDailyTracks"
-    :style="cardStyles"
-  >
+  <div class="daily-recommend-card" @click="goToDailyTracks">
+    <img :src="coverUrl" />
     <div class="container">
       <div class="title-box">
         <div class="title">
@@ -21,36 +18,52 @@
 </template>
 
 <script>
-import { mapMutations, mapState } from "vuex";
+import { mapMutations, mapState, mapActions } from "vuex";
 import { dailyRecommendTracks } from "@/api/playlist";
+import { isAccountLoggedIn } from "@/utils/auth";
+import sample from "lodash/sample";
+
+const defaultCovers = [
+  "https://p2.music.126.net/0-Ybpa8FrDfRgKYCTJD8Xg==/109951164796696795.jpg",
+  "https://p2.music.126.net/QxJA2mr4hhb9DZyucIOIQw==/109951165422200291.jpg",
+  "https://p1.music.126.net/AhYP9TET8l-VSGOpWAKZXw==/109951165134386387.jpg",
+];
 
 export default {
   name: "DailyTracksCard",
-  created() {
-    if (this.dailyTracks.length === 0) this.loadDailyTracks();
+  data() {
+    return { useAnimation: false };
   },
   computed: {
     ...mapState(["dailyTracks"]),
-    cardStyles() {
-      return {
-        background:
-          this.dailyTracks.length !== 0
-            ? `no-repeat url("${this.dailyTracks[0].al.picUrl}?param=1024y1024") center/cover`
-            : "",
-      };
+    coverUrl() {
+      return `${
+        this.dailyTracks[0]?.al.picUrl || sample(defaultCovers)
+      }?param=1024y1024`;
     },
   },
+  created() {
+    if (this.dailyTracks.length === 0) this.loadDailyTracks();
+  },
   methods: {
+    ...mapActions(["showToast"]),
     ...mapMutations(["updateDailyTracks"]),
     loadDailyTracks() {
-      dailyRecommendTracks().then((result) => {
-        this.updateDailyTracks(result.data.dailySongs);
-      });
+      if (!isAccountLoggedIn()) return;
+      dailyRecommendTracks()
+        .then((result) => {
+          this.updateDailyTracks(result.data.dailySongs);
+        })
+        .catch(() => {});
     },
     goToDailyTracks() {
       this.$router.push({ name: "dailySongs" });
     },
     playDailyTracks() {
+      if (!isAccountLoggedIn()) {
+        this.showToast("此操作需要登录网易云账号");
+        return;
+      }
       let trackIDs = this.dailyTracks.map((t) => t.id);
       this.$store.state.player.replacePlaylist(
         trackIDs,
@@ -66,15 +79,24 @@ export default {
 <style lang="scss" scoped>
 .daily-recommend-card {
   border-radius: 1rem;
-  animation: move 38s infinite;
-  animation-direction: alternate;
   height: 198px;
   cursor: pointer;
   position: relative;
+  overflow: hidden;
+}
+
+img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  animation: move 38s infinite;
+  animation-direction: alternate;
+  z-index: -1;
 }
 
 .container {
-  background: linear-gradient(to left, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.38));
+  background: linear-gradient(to left, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.28));
   height: 198px;
   width: 50%;
   display: flex;
@@ -139,10 +161,10 @@ export default {
 
 @keyframes move {
   0% {
-    background-position: 0% 0%;
+    transform: translateY(0);
   }
   100% {
-    background-position: 0% 100%;
+    transform: translateY(-50%);
   }
 }
 </style>

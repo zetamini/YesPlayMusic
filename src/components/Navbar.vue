@@ -12,8 +12,8 @@
             class="button max-restore codicon"
             @click="windowMaxRestore"
             :class="{
-              'codicon-chrome-restore': windowIsMaximized,
-              'codicon-chrome-maximize': !windowIsMaximized,
+              'codicon-chrome-restore': !isWindowMaximized,
+              'codicon-chrome-maximize': isWindowMaximized,
             }"
           ></div>
           <div
@@ -66,13 +66,13 @@
     </nav>
 
     <ContextMenu ref="userProfileMenu">
-      <div class="item" @click="toLogin" v-if="!isLooseLoggedIn">
-        <svg-icon icon-class="login" />
-        {{ $t("login.login") }}
-      </div>
       <div class="item" @click="toSettings">
         <svg-icon icon-class="settings" />
         {{ $t("library.userProfileMenu.settings") }}
+      </div>
+      <div class="item" @click="toLogin" v-if="!isLooseLoggedIn">
+        <svg-icon icon-class="login" />
+        {{ $t("login.login") }}
       </div>
       <div class="item" @click="logout" v-if="isLooseLoggedIn">
         <svg-icon icon-class="logout" />
@@ -98,11 +98,10 @@ import "vscode-codicons/dist/codicon.css";
 import ContextMenu from "@/components/ContextMenu.vue";
 import ButtonIcon from "@/components/ButtonIcon.vue";
 
-let win = undefined;
-if (process.env.IS_ELECTRON === true) {
-  const electron = require("electron");
-  win = electron.remote.BrowserWindow.getFocusedWindow();
-}
+const electron =
+  process.env.IS_ELECTRON === true ? window.require("electron") : null;
+const ipcRenderer =
+  process.env.IS_ELECTRON === true ? electron.ipcRenderer : null;
 
 export default {
   name: "Navbar",
@@ -113,9 +112,9 @@ export default {
   data() {
     return {
       inputFocus: false,
-      langs: ["zh-CN", "en"],
+      langs: ["zh-CN", "en", "tr"],
       keywords: "",
-      windowIsMaximized: win ? win.isMaximized() : true,
+      isWindowMaximized: false,
     };
   },
   computed: {
@@ -124,10 +123,17 @@ export default {
       return isLooseLoggedIn();
     },
     avatarUrl() {
-      return this.data.user.avatarUrl
-        ? `${this.data.user.avatarUrl}?param=512y512`
+      return this.data?.user?.avatarUrl && this.isLooseLoggedIn
+        ? `${this.data?.user?.avatarUrl}?param=512y512`
         : "http://s4.music.126.net/style/web2/img/default/default_avatar.jpg?param=60y60";
     },
+  },
+  created() {
+    if (process.env.IS_ELECTRON === true) {
+      ipcRenderer.on("isMaximized", (event, value) => {
+        this.isWindowMaximized = value;
+      });
+    }
   },
   methods: {
     go(where) {
@@ -162,22 +168,20 @@ export default {
       window.open("https://github.com/qier222/YesPlayMusic");
     },
     toLogin() {
-      this.$router.push({ name: "login" });
-    },
-    windowMinimize() {
-      win.minimize();
-    },
-    windowMaxRestore() {
-      if (win.isMaximized()) {
-        win.restore();
-        this.windowIsMaximized = false;
+      if (process.env.IS_ELECTRON === true) {
+        this.$router.push({ name: "loginAccount" });
       } else {
-        win.maximize();
-        this.windowIsMaximized = true;
+        this.$router.push({ name: "login" });
       }
     },
+    windowMinimize() {
+      ipcRenderer.send("minimize");
+    },
+    windowMaxRestore() {
+      ipcRenderer.send("maximizeOrUnmaximize");
+    },
     windowClose() {
-      win.close();
+      ipcRenderer.send("close");
     },
   },
 };
@@ -400,6 +404,7 @@ nav {
   align-items: center;
   justify-content: flex-end;
   .avatar {
+    user-select: none;
     height: 30px;
     margin-left: 12px;
     vertical-align: -7px;
