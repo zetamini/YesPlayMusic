@@ -8,20 +8,20 @@
     <TrackList
       :tracks="dailyTracks"
       type="playlist"
-      dbclickTrackFunc="dailyTracks"
+      dbclick-track-func="dailyTracks"
     />
   </div>
 </template>
 
 <script>
-import { mapMutations, mapState } from "vuex";
-import NProgress from "nprogress";
-import { dailyRecommendTracks } from "@/api/playlist";
+import { mapMutations, mapState } from 'vuex';
+import NProgress from 'nprogress';
+import { dailyRecommendTracks } from '@/api/playlist';
 
-import TrackList from "@/components/TrackList.vue";
+import TrackList from '@/components/TrackList.vue';
 
 export default {
-  name: "dailyTracks",
+  name: 'DailyTracks',
   components: {
     TrackList,
   },
@@ -30,21 +30,24 @@ export default {
       show: false,
     };
   },
+  computed: {
+    ...mapState(['player', 'data', 'dailyTracks']),
+  },
   created() {
     if (this.dailyTracks.length === 0) {
-      NProgress.start();
+      setTimeout(() => {
+        if (!this.show) NProgress.start();
+      }, 1000);
       this.loadDailyTracks();
     } else {
       this.show = true;
     }
-  },
-  computed: {
-    ...mapState(["player", "data", "dailyTracks"]),
+    this.$parent.$refs.main.scrollTo(0, 0);
   },
   methods: {
-    ...mapMutations(["updateDailyTracks"]),
+    ...mapMutations(['updateDailyTracks']),
     loadDailyTracks() {
-      dailyRecommendTracks().then((result) => {
+      dailyRecommendTracks().then(result => {
         this.updateDailyTracks(result.data.dailySongs);
         NProgress.done();
         this.show = true;

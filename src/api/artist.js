@@ -1,5 +1,5 @@
-import request from "@/utils/request";
-import { mapTrackPlayableStatus } from "@/utils/common";
+import request from '@/utils/request';
+import { mapTrackPlayableStatus } from '@/utils/common';
 
 /**
  * 获取歌手单曲
@@ -8,13 +8,13 @@ import { mapTrackPlayableStatus } from "@/utils/common";
  */
 export function getArtist(id) {
   return request({
-    url: "/artists",
-    method: "get",
+    url: '/artists',
+    method: 'get',
     params: {
       id,
       timestamp: new Date().getTime(),
     },
-  }).then((data) => {
+  }).then(data => {
     data.hotSongs = mapTrackPlayableStatus(data.hotSongs);
     return data;
   });
@@ -33,8 +33,8 @@ export function getArtist(id) {
  */
 export function getArtistAlbum(params) {
   return request({
-    url: "/artist/album",
-    method: "get",
+    url: '/artist/album',
+    method: 'get',
     params,
   });
 }
@@ -50,12 +50,14 @@ export function getArtistAlbum(params) {
  * @param {number=} type
  */
 export function toplistOfArtists(type = null) {
+  let params = {};
+  if (type) {
+    params.type = type;
+  }
   return request({
-    url: "/toplist/artist",
-    method: "get",
-    params: {
-      type,
-    },
+    url: '/toplist/artist',
+    method: 'get',
+    params,
   });
 }
 /**
@@ -67,8 +69,8 @@ export function toplistOfArtists(type = null) {
  */
 export function artistMv(params) {
   return request({
-    url: "/artist/mv",
-    method: "get",
+    url: '/artist/mv',
+    method: 'get',
     params,
   });
 }
@@ -84,8 +86,8 @@ export function artistMv(params) {
  */
 export function followAArtist(params) {
   return request({
-    url: "/artist/sub",
-    method: "post",
+    url: '/artist/sub',
+    method: 'post',
     params,
   });
 }
@@ -98,8 +100,8 @@ export function followAArtist(params) {
  */
 export function similarArtists(id) {
   return request({
-    url: "/simi/artist",
-    method: "post",
+    url: '/simi/artist',
+    method: 'post',
     params: { id },
   });
 }

@@ -1,5 +1,6 @@
-import request from "@/utils/request";
-import { mapTrackPlayableStatus } from "@/utils/common";
+import request from '@/utils/request';
+import { mapTrackPlayableStatus } from '@/utils/common';
+import { cacheAlbum, getAlbumFromCache } from '@/utils/db';
 
 /**
  * 获取专辑内容
@@ -7,15 +8,23 @@ import { mapTrackPlayableStatus } from "@/utils/common";
  * @param {number} id
  */
 export function getAlbum(id) {
-  return request({
-    url: "/album",
-    method: "get",
-    params: {
-      id,
-    },
-  }).then((data) => {
-    data.songs = mapTrackPlayableStatus(data.songs);
-    return data;
+  const fetchLatest = () => {
+    return request({
+      url: '/album',
+      method: 'get',
+      params: {
+        id,
+      },
+    }).then(data => {
+      cacheAlbum(id, data);
+      data.songs = mapTrackPlayableStatus(data.songs);
+      return data;
+    });
+  };
+  fetchLatest();
+
+  return getAlbumFromCache(id).then(result => {
+    return result ?? fetchLatest();
   });
 }
 
@@ -32,8 +41,8 @@ export function getAlbum(id) {
  */
 export function newAlbums(params) {
   return request({
-    url: "/album/new",
-    method: "get",
+    url: '/album/new',
+    method: 'get',
     params,
   });
 }
@@ -46,8 +55,8 @@ export function newAlbums(params) {
  */
 export function albumDynamicDetail(id) {
   return request({
-    url: "/album/detail/dynamic",
-    method: "get",
+    url: '/album/detail/dynamic',
+    method: 'get',
     params: { id, timestamp: new Date().getTime() },
   });
 }
@@ -63,8 +72,8 @@ export function albumDynamicDetail(id) {
  */
 export function likeAAlbum(params) {
   return request({
-    url: "/album/sub",
-    method: "post",
+    url: '/album/sub',
+    method: 'post',
     params,
   });
 }

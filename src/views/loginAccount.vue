@@ -1,115 +1,141 @@
 <template>
   <div class="login">
-    <div class="section-1">
-      <img src="/img/logos/netease-music.png" />
-    </div>
-    <div class="title">{{ $t("login.loginText") }}</div>
-    <div class="section-2">
-      <div class="input-box" v-show="mode === 'phone'">
-        <div class="container" :class="{ active: inputFocus === 'phone' }">
-          <svg-icon icon-class="mobile" />
-          <div class="inputs">
-            <input
-              id="countryCode"
-              :placeholder="
-                inputFocus === 'phone' ? '' : $t('login.countryCode')
-              "
-              v-model="countryCode"
-              @focus="inputFocus = 'phone'"
-              @blur="inputFocus = ''"
-              @keyup.enter="login"
-            />
-            <input
-              id="phoneNumber"
-              :placeholder="inputFocus === 'phone' ? '' : $t('login.phone')"
-              v-model="phoneNumber"
-              @focus="inputFocus = 'phone'"
-              @blur="inputFocus = ''"
-              @keyup.enter="login"
-            />
+    <div class="login-container">
+      <div class="section-1">
+        <img src="/img/logos/netease-music.png" />
+      </div>
+      <div class="title">{{ $t('login.loginText') }}</div>
+      <div class="section-2">
+        <div v-show="mode === 'phone'" class="input-box">
+          <div class="container" :class="{ active: inputFocus === 'phone' }">
+            <svg-icon icon-class="mobile" />
+            <div class="inputs">
+              <input
+                id="countryCode"
+                v-model="countryCode"
+                :placeholder="
+                  inputFocus === 'phone' ? '' : $t('login.countryCode')
+                "
+                @focus="inputFocus = 'phone'"
+                @blur="inputFocus = ''"
+                @keyup.enter="login"
+              />
+              <input
+                id="phoneNumber"
+                v-model="phoneNumber"
+                :placeholder="inputFocus === 'phone' ? '' : $t('login.phone')"
+                @focus="inputFocus = 'phone'"
+                @blur="inputFocus = ''"
+                @keyup.enter="login"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div v-show="mode === 'email'" class="input-box">
+          <div class="container" :class="{ active: inputFocus === 'email' }">
+            <svg-icon icon-class="mail" />
+            <div class="inputs">
+              <input
+                id="email"
+                v-model="email"
+                type="email"
+                :placeholder="inputFocus === 'email' ? '' : $t('login.email')"
+                @focus="inputFocus = 'email'"
+                @blur="inputFocus = ''"
+                @keyup.enter="login"
+              />
+            </div>
+          </div>
+        </div>
+        <div v-show="mode !== 'qrCode'" class="input-box">
+          <div class="container" :class="{ active: inputFocus === 'password' }">
+            <svg-icon icon-class="lock" />
+            <div class="inputs">
+              <input
+                id="password"
+                v-model="password"
+                type="password"
+                :placeholder="
+                  inputFocus === 'password' ? '' : $t('login.password')
+                "
+                @focus="inputFocus = 'password'"
+                @blur="inputFocus = ''"
+                @keyup.enter="login"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div v-show="mode == 'qrCode'">
+          <div v-show="qrCodeImage" class="qr-code-container">
+            <img :src="qrCodeImage" />
+          </div>
+          <div class="qr-code-info">
+            {{ qrCodeInformation }}
           </div>
         </div>
       </div>
-      <div class="input-box" v-show="mode === 'email'">
-        <div class="container" :class="{ active: inputFocus === 'email' }">
-          <svg-icon icon-class="mail" />
-          <div class="inputs">
-            <input
-              type="email"
-              id="email"
-              :placeholder="inputFocus === 'email' ? '' : $t('login.email')"
-              v-model="email"
-              @focus="inputFocus = 'email'"
-              @blur="inputFocus = ''"
-              @keyup.enter="login"
-            />
-          </div>
-        </div>
+      <div v-show="mode !== 'qrCode'" class="confirm">
+        <button v-show="!processing" @click="login">
+          {{ $t('login.login') }}
+        </button>
+        <button v-show="processing" class="loading" disabled>
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
-      <div class="input-box">
-        <div class="container" :class="{ active: inputFocus === 'password' }">
-          <svg-icon icon-class="lock" />
-          <div class="inputs">
-            <input
-              type="password"
-              id="password"
-              :placeholder="
-                inputFocus === 'password' ? '' : $t('login.password')
-              "
-              v-model="password"
-              @focus="inputFocus = 'password'"
-              @blur="inputFocus = ''"
-              @keyup.enter="login"
-            />
-          </div>
-        </div>
+      <div class="other-login">
+        <a v-show="mode !== 'email'" @click="mode = 'email'">{{
+          $t('login.loginWithEmail')
+        }}</a>
+        <span v-show="mode === 'qrCode'">|</span>
+        <a v-show="mode !== 'phone'" @click="mode = 'phone'">{{
+          $t('login.loginWithPhone')
+        }}</a>
+        <span v-show="mode !== 'qrCode'">|</span>
+        <a v-show="mode !== 'qrCode'" @click="mode = 'qrCode'"> 二维码登录 </a>
       </div>
+      <div
+        v-show="mode !== 'qrCode'"
+        class="notice"
+        v-html="isElectron ? $t('login.noticeElectron') : $t('login.notice')"
+      ></div>
     </div>
-    <div class="confirm">
-      <button @click="login" v-show="!processing">
-        {{ $t("login.login") }}
-      </button>
-      <button v-show="processing" class="loading" disabled>
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-    </div>
-    <div class="other-login">
-      <a v-show="mode === 'phone'" @click="mode = 'email'">{{
-        $t("login.loginWithEmail")
-      }}</a>
-      <a v-show="mode === 'email'" @click="mode = 'phone'">{{
-        $t("login.loginWithPhone")
-      }}</a>
-    </div>
-    <div
-      class="notice"
-      v-html="isElectron ? $t('login.noticeElectron') : $t('login.notice')"
-    ></div>
   </div>
 </template>
 
 <script>
-import NProgress from "nprogress";
-import { loginWithPhone, loginWithEmail } from "@/api/auth";
-import { setCookies } from "@/utils/auth";
-import md5 from "crypto-js/md5";
-import { mapMutations } from "vuex";
-import nativeAlert from "@/utils/nativeAlert";
+import QRCode from 'qrcode';
+import md5 from 'crypto-js/md5';
+import NProgress from 'nprogress';
+import { mapMutations } from 'vuex';
+import { setCookies } from '@/utils/auth';
+import nativeAlert from '@/utils/nativeAlert';
+import {
+  loginWithPhone,
+  loginWithEmail,
+  loginQrCodeKey,
+  loginQrCodeCheck,
+} from '@/api/auth';
 
 export default {
-  name: "Login",
+  name: 'Login',
   data() {
     return {
       processing: false,
-      mode: "email",
-      countryCode: "+86",
-      phoneNumber: "",
-      email: "",
-      password: "",
-      smsCode: "",
-      inputFocus: "",
+      mode: 'qrCode',
+      countryCode: '+86',
+      phoneNumber: '',
+      email: '',
+      password: '',
+      smsCode: '',
+      inputFocus: '',
+      qrCodeKey: '',
+      qrCodeImage: '',
+      qrCodeCheckInterval: null,
+      qrCodeInformation: '打开网易云音乐APP扫码登录',
     };
   },
   computed: {
@@ -118,20 +144,23 @@ export default {
     },
   },
   created() {
-    if (this.$route.query.mode === "phone") {
-      this.mode = "phone";
+    if (['phone', 'email', 'qrCode'].includes(this.$route.query.mode)) {
+      this.mode = this.$route.query.mode;
     }
-    NProgress.done();
+    this.getQrCodeKey();
+  },
+  beforeDestroy() {
+    clearInterval(this.qrCodeCheckInterval);
   },
   methods: {
-    ...mapMutations(["updateData"]),
+    ...mapMutations(['updateData']),
     validatePhone() {
       if (
-        this.countryCode === "" ||
-        this.phone === "" ||
-        this.password === ""
+        this.countryCode === '' ||
+        this.phone === '' ||
+        this.password === ''
       ) {
-        nativeAlert("国家区号或手机号不正确");
+        nativeAlert('国家区号或手机号不正确');
         this.processing = false;
         return false;
       }
@@ -140,27 +169,27 @@ export default {
     validateEmail() {
       const emailReg = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
       if (
-        this.email === "" ||
-        this.password === "" ||
+        this.email === '' ||
+        this.password === '' ||
         !emailReg.test(this.email)
       ) {
-        nativeAlert("邮箱不正确");
+        nativeAlert('邮箱不正确');
         return false;
       }
       return true;
     },
     login() {
-      if (this.mode === "phone") {
+      if (this.mode === 'phone') {
         this.processing = this.validatePhone();
         if (!this.processing) return;
         loginWithPhone({
-          countrycode: this.countryCode.replace("+", "").replace(/\s/g, ""),
-          phone: this.phoneNumber.replace(/\s/g, ""),
-          password: "fakePassword",
+          countrycode: this.countryCode.replace('+', '').replace(/\s/g, ''),
+          phone: this.phoneNumber.replace(/\s/g, ''),
+          password: 'fakePassword',
           md5_password: md5(this.password).toString(),
         })
           .then(this.handleLoginResponse)
-          .catch((error) => {
+          .catch(error => {
             this.processing = false;
             nativeAlert(`发生错误，请检查你的账号密码是否正确\n${error}`);
           });
@@ -168,12 +197,12 @@ export default {
         this.processing = this.validateEmail();
         if (!this.processing) return;
         loginWithEmail({
-          email: this.email.replace(/\s/g, ""),
-          password: "fakePassword",
+          email: this.email.replace(/\s/g, ''),
+          password: 'fakePassword',
           md5_password: md5(this.password).toString(),
         })
           .then(this.handleLoginResponse)
-          .catch((error) => {
+          .catch(error => {
             this.processing = false;
             nativeAlert(`发生错误，请检查你的账号密码是否正确\n${error}`);
           });
@@ -186,14 +215,62 @@ export default {
       }
       if (data.code === 200) {
         setCookies(data.cookie);
-        this.updateData({ key: "user", value: data.profile });
-        this.updateData({ key: "loginMode", value: "account" });
-        this.$router.push({ path: "/library" });
+        this.updateData({ key: 'loginMode', value: 'account' });
+        this.$store.dispatch('fetchUserProfile').then(() => {
+          this.$store.dispatch('fetchLikedPlaylist').then(() => {
+            this.$router.push({ path: '/library' });
+          });
+        });
       } else {
         this.processing = false;
-        console.log(data.msg);
-        nativeAlert(data.msg ?? data.message ?? "账号或密码错误，请检查");
+        nativeAlert(data.msg ?? data.message ?? '账号或密码错误，请检查');
       }
+    },
+    getQrCodeKey() {
+      return loginQrCodeKey().then(result => {
+        if (result.code === 200) {
+          this.qrCodeKey = result.data.unikey;
+          QRCode.toDataURL(
+            `https://music.163.com/login?codekey=${this.qrCodeKey}`,
+            {
+              width: 192,
+              margin: 0,
+              color: {
+                dark: '#335eea',
+                light: '#00000000',
+              },
+            }
+          )
+            .then(url => {
+              this.qrCodeImage = url;
+            })
+            .catch(err => {
+              console.error(err);
+            })
+            .finally(() => {
+              NProgress.done();
+            });
+        }
+        this.checkQrCodeLogin();
+      });
+    },
+    checkQrCodeLogin() {
+      this.qrCodeCheckInterval = setInterval(() => {
+        if (this.qrCodeKey === '') return;
+        loginQrCodeCheck(this.qrCodeKey).then(result => {
+          if (result.code === 800) {
+            this.getQrCodeKey(); // 重新生成QrCode
+            this.qrCodeInformation = '二维码已失效，请重新扫码';
+          } else if (result.code === 802) {
+            this.qrCodeInformation = '扫描成功，请在手机上确认登录';
+          } else if (result.code === 803) {
+            clearInterval(this.qrCodeCheckInterval);
+            this.qrCodeInformation = '登录成功，请稍等...';
+            result.code = 200;
+            this.handleLoginResponse(result);
+          }
+        });
+      }, 1000);
     },
   },
 };
@@ -205,7 +282,14 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 192px);
+  margin-top: 32px;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .title {
@@ -222,6 +306,7 @@ export default {
   img {
     height: 64px;
     margin: 20px;
+    user-select: none;
   }
 }
 
@@ -316,11 +401,11 @@ export default {
 
 .other-login {
   margin-top: 24px;
+  font-size: 13px;
+  color: var(--color-text);
+  opacity: 0.68;
   a {
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--color-text);
-    opacity: 0.68;
+    padding: 0 8px;
   }
 }
 
@@ -368,5 +453,17 @@ button.loading {
 
 .loading span:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+.qr-code-container {
+  background-color: var(--color-primary-bg);
+  padding: 24px 24px 21px 24px;
+  border-radius: 1.25rem;
+  margin-bottom: 12px;
+}
+.qr-code-info {
+  color: var(--color-text);
+  text-align: center;
+  margin-bottom: 28px;
 }
 </style>

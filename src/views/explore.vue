@@ -1,6 +1,6 @@
 <template>
-  <div class="explore">
-    <h1>{{ $t("explore.explore") }}</h1>
+  <div class="explore-page">
+    <h1>{{ $t('explore.explore') }}</h1>
     <div class="buttons">
       <div
         v-for="category in settings.enabledPlaylistCategories"
@@ -57,70 +57,82 @@
         color="grey"
         :loading="loadingMore"
         @click.native="getPlaylist"
-        >{{ $t("explore.loadMore") }}</ButtonTwoTone
+        >{{ $t('explore.loadMore') }}</ButtonTwoTone
       >
     </div>
   </div>
 </template>
 
 <script>
-import { mapState, mapMutations } from "vuex";
-import NProgress from "nprogress";
+import { mapState, mapMutations } from 'vuex';
+import NProgress from 'nprogress';
 import {
   topPlaylist,
   highQualityPlaylist,
   recommendPlaylist,
   toplists,
-} from "@/api/playlist";
-import { playlistCategories } from "@/utils/staticData";
+} from '@/api/playlist';
+import { playlistCategories } from '@/utils/staticData';
 
-import ButtonTwoTone from "@/components/ButtonTwoTone.vue";
-import CoverRow from "@/components/CoverRow.vue";
-import SvgIcon from "@/components/SvgIcon.vue";
+import ButtonTwoTone from '@/components/ButtonTwoTone.vue';
+import CoverRow from '@/components/CoverRow.vue';
+import SvgIcon from '@/components/SvgIcon.vue';
 
 export default {
-  name: "Explore",
+  name: 'Explore',
   components: {
     CoverRow,
     ButtonTwoTone,
     SvgIcon,
   },
+  beforeRouteUpdate(to, from, next) {
+    this.showLoadMoreButton = false;
+    this.hasMore = true;
+    this.playlists = [];
+    this.offset = 1;
+    this.activeCategory = to.query.category;
+    this.getPlaylist();
+    next();
+  },
   data() {
     return {
       show: false,
       playlists: [],
-      activeCategory: "全部",
+      activeCategory: '全部',
       loadingMore: false,
       showLoadMoreButton: false,
       hasMore: true,
-      allBigCats: ["语种", "风格", "场景", "情感", "主题"],
+      allBigCats: ['语种', '风格', '场景', '情感', '主题'],
       showCatOptions: false,
     };
   },
   computed: {
-    ...mapState(["settings"]),
+    ...mapState(['settings']),
     subText() {
-      if (this.activeCategory === "排行榜") return "updateFrequency";
-      if (this.activeCategory === "推荐歌单") return "copywriter";
-      return "none";
+      if (this.activeCategory === '排行榜') return 'updateFrequency';
+      if (this.activeCategory === '推荐歌单') return 'copywriter';
+      return 'none';
     },
   },
   activated() {
     this.loadData();
+    this.$parent.$refs.scrollbar.restorePosition();
   },
   methods: {
-    ...mapMutations(["togglePlaylistCategory"]),
+    ...mapMutations(['togglePlaylistCategory']),
     loadData() {
-      if (!this.show) NProgress.start();
+      setTimeout(() => {
+        if (!this.show) NProgress.start();
+      }, 1000);
       this.activeCategory =
         this.$route.query.category === undefined
-          ? "全部"
+          ? '全部'
           : this.$route.query.category;
       this.getPlaylist();
     },
     goToCategory(Category) {
-      if (this.showCatOptions) return;
-      this.$router.push({ path: "/explore?category=" + Category });
+      this.showCatOptions = false;
+      this.$router.push({ path: '/explore?category=' + Category });
     },
     updatePlaylist(playlists) {
       this.playlists.push(...playlists);
@@ -131,19 +143,19 @@ export default {
     },
     getPlaylist() {
       this.loadingMore = true;
-      if (this.activeCategory === "推荐歌单") {
+      if (this.activeCategory === '推荐歌单') {
         return this.getRecommendPlayList();
       }
-      if (this.activeCategory === "精品歌单") {
+      if (this.activeCategory === '精品歌单') {
         return this.getHighQualityPlaylist();
       }
-      if (this.activeCategory === "排行榜") {
+      if (this.activeCategory === '排行榜') {
         return this.getTopLists();
       }
       return this.getTopPlayList();
     },
     getRecommendPlayList() {
-      recommendPlaylist({ limit: 100 }).then((data) => {
+      recommendPlaylist({ limit: 100 }).then(data => {
         this.playlists = [];
         this.updatePlaylist(data.result);
       });
@@ -152,13 +164,13 @@ export default {
       let playlists = this.playlists;
       let before =
         playlists.length !== 0 ? playlists[playlists.length - 1].updateTime : 0;
-      highQualityPlaylist({ limit: 50, before }).then((data) => {
+      highQualityPlaylist({ limit: 50, before }).then(data => {
         this.updatePlaylist(data.playlists);
         this.hasMore = data.more;
       });
     },
     getTopLists() {
-      toplists().then((data) => {
+      toplists().then(data => {
         this.playlists = [];
         this.updatePlaylist(data.list);
       });
@@ -167,27 +179,17 @@ export default {
       topPlaylist({
         cat: this.activeCategory,
         offset: this.playlists.length,
-      }).then((data) => {
+      }).then(data => {
         this.updatePlaylist(data.playlists);
         this.hasMore = data.more;
       });
     },
     getCatsByBigCat(name) {
-      return playlistCategories.filter((c) => c.bigCat === name);
+      return playlistCategories.filter(c => c.bigCat === name);
     },
     toggleCat(name) {
       this.togglePlaylistCategory(name);
     },
-  },
-  beforeRouteUpdate(to, from, next) {
-    NProgress.start();
-    this.showLoadMoreButton = false;
-    this.hasMore = true;
-    this.playlists = [];
-    this.offset = 1;
-    this.activeCategory = to.query.category;
-    this.getPlaylist();
-    next();
   },
 };
 </script>
