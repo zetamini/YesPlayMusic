@@ -37,32 +37,26 @@ export function initIpcMain(win, store) {
   });
 
   ipcMain.on('close', e => {
-    if (process.platform == 'darwin') {
+    if (process.platform === 'darwin') {
       win.hide();
+      exitAsk(e);
+    } else {
+      let closeOpt = store.get('settings.closeAppOption');
+      console.log(closeOpt);
+      if (closeOpt === 'exit') {
+        win = null;
+        //app.quit();
+        app.exit(); //exit()直接关闭客户端，不会执行quit();
+      } else if (closeOpt === 'minimize') {
+        e.preventDefault(); //阻止默认行为
+        win.minimize(); //调用 最小化实例方法
+      } else if (closeOpt === 'minimizeToTray') {
+        e.preventDefault();
+        win.hide();
+      } else {
+        exitAskWithoutMac(e);
+      }
     }
-    e.preventDefault(); //阻止默认行为
-    dialog
-      .showMessageBox({
-        type: 'info',
-        title: 'Information',
-        cancelId: 2,
-        defaultId: 0,
-        message: '确定要关闭吗？',
-        buttons: ['最小化', '直接退出'],
-      })
-      .then(result => {
-        if (result.response == 0) {
-          e.preventDefault(); //阻止默认行为
-          win.minimize(); //调用 最小化实例方法
-        } else if (result.response == 1) {
-          win = null;
-          //app.quit();
-          app.exit(); //exit()直接关闭客户端，不会执行quit();
-        }
-      })
-      .catch(err => {
-        log(err);
-      });
   });
 
   ipcMain.on('minimize', () => {
@@ -80,6 +74,7 @@ export function initIpcMain(win, store) {
     if (options.enableGlobalShortcut) {
       registerGlobalShortcut(win, store);
     } else {
+      log('unregister global shortcut');
       globalShortcut.unregisterAll();
     }
   });
@@ -129,6 +124,7 @@ export function initIpcMain(win, store) {
   });
 
   ipcMain.on('switchGlobalShortcutStatusTemporary', (e, status) => {
+    log('switchGlobalShortcutStatusTemporary');
     if (status === 'disable') {
       globalShortcut.unregisterAll();
     } else {
@@ -156,4 +152,64 @@ export function initIpcMain(win, store) {
     globalShortcut.unregisterAll();
     registerGlobalShortcut(win, store);
   });
+
+  const exitAsk = e => {
+    e.preventDefault(); //阻止默认行为
+    dialog
+      .showMessageBox({
+        type: 'info',
+        title: 'Information',
+        cancelId: 2,
+        defaultId: 0,
+        message: '确定要关闭吗？',
+        buttons: ['最小化', '直接退出'],
+      })
+      .then(result => {
+        if (result.response == 0) {
+          e.preventDefault(); //阻止默认行为
+          win.minimize(); //调用 最小化实例方法
+        } else if (result.response == 1) {
+          win = null;
+          //app.quit();
+          app.exit(); //exit()直接关闭客户端，不会执行quit();
+        }
+      })
+      .catch(err => {
+        log(err);
+      });
+  };
+
+  const exitAskWithoutMac = e => {
+    e.preventDefault(); //阻止默认行为
+    dialog
+      .showMessageBox({
+        type: 'info',
+        title: 'Information',
+        cancelId: 2,
+        defaultId: 0,
+        message: '确定要关闭吗？',
+        buttons: ['最小化到托盘', '直接退出'],
+        checkboxLabel: '记住我的选择',
+      })
+      .then(result => {
+        if (result.checkboxChecked && result.response !== 2) {
+          win.webContents.send(
+            'rememberCloseAppOption',
+            result.response === 0 ? 'minimizeToTray' : 'exit'
+          );
+        }
+
+        if (result.response === 0) {
+          e.preventDefault(); //阻止默认行为
+          win.hide(); //调用 最小化实例方法
+        } else if (result.response === 1) {
+          win = null;
+          //app.quit();
+          app.exit(); //exit()直接关闭客户端，不会执行quit();
+        }
+      })
+      .catch(err => {
+        log(err);
+      });
+  };
 }
